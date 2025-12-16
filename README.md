@@ -7,6 +7,8 @@
 
 # State Manager
 
+**Now compatible with [sd-webui-forge-classic (neo branch)](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)!**
+
 After trying a number of history/ state management extensions, I found they all suffered from one of more of these problems:
 
 - Bad UI/UX
@@ -29,13 +31,27 @@ If you'd rather save your entries manually, just turn off the toggle in the stat
 
 # Installation
 
-Open your A1111 Web UI and go to `Extensions > Install from URL`. Paste in the link to this repo (`https://github.com/SenshiSentou/sd-webui-state-manager.git`), click `Install` and restart the web ui. Badabing badaboom, baby!
+Open your Web UI (A1111 or Forge Classic Neo) and go to `Extensions > Install from URL`. Paste in the link to this repo (`https://github.com/scomey-hub/sd-webui-state-manager.git`), click `Install` and restart the web ui. Badabing badaboom, baby!
+
+## Compatibility
+
+This fork is compatible with:
+- **Automatic1111 WebUI** (original)
+- **sd-webui-forge-classic (neo branch)** - Gradio 4.x support
 
 # Changelog
 
 <details>
   <summary>Click to expand</summary>
-  
+
+  ## 2.1 (Fork)
+  - Added compatibility for sd-webui-forge-classic (neo branch)
+  - Added Gradio 4.x compatible value reading/writing (DOM-based instead of Svelte internals)
+  - Removed sd_hypernetwork from quick settings (not available in Forge)
+  - Added graceful handling for missing settings across different WebUI forks
+  - Updated input accordion handling for both A1111 and Forge structures
+  - Maintains backwards compatibility with standard A1111 WebUI
+
   ## 2.0
   - Completely overhauled the way settings are saved and loaded (much more robust now) **V2.0 is NOT backwards compatible with V1**
   - Added settings panel (`Settings > State Manager`) that contains:

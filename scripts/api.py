@@ -80,19 +80,30 @@ def state_manager_api(blocks: gr.Blocks, app: FastAPI):
 
     @app.get("/statemanager/quicksettings")
     async def get_quick_settings():
-        # Model, VAE, CLIP and hypernetwork are such important and commonly changed settings, I feel they belong here no matter what
-        quick_settings_names = set(['sd_model_checkpoint', 'sd_vae', 'sd_hypernetwork', 'CLIP_stop_at_last_layers']).union(set(shared.opts.quicksettings_list))
-        
-        return {"settings": {s: getattr(shared.opts, s) for s in quick_settings_names}}
+        # Model, VAE, and CLIP are such important and commonly changed settings, I feel they belong here no matter what
+        # Note: sd_hypernetwork removed as it's not available in Forge Classic Neo
+        quick_settings_names = set(['sd_model_checkpoint', 'sd_vae', 'CLIP_stop_at_last_layers']).union(set(shared.opts.quicksettings_list))
+
+        # Filter to only settings that actually exist (for compatibility with different WebUI forks)
+        settings = {}
+        for s in quick_settings_names:
+            if hasattr(shared.opts, s):
+                settings[s] = getattr(shared.opts, s)
+
+        return {"settings": settings}
     
     @app.post("/statemanager/quicksettings")
     async def set_quick_settings(settings_json: ContentsDataModel):
         settings = json.loads(settings_json.contents)
 
         for name, value in settings.items():
-            print(f'setting shared.opts.{name} to {value}')
-            setattr(shared.opts, name, value)
-        
+            # Skip settings that don't exist (for compatibility with different WebUI forks)
+            if hasattr(shared.opts, name):
+                print(f'setting shared.opts.{name} to {value}')
+                setattr(shared.opts, name, value)
+            else:
+                print(f'skipping shared.opts.{name} (not available in this WebUI)')
+
         return {"success": True}
 
     # def save(contents: Annotated[str, Body()]):

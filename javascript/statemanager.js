@@ -525,14 +525,13 @@
             'sd_model_checkpoint': 'Checkpoint',
             'sd_vae': 'VAE',
             'CLIP_stop_at_last_layers': 'CLIP skip',
-            'sd_hypernetwork': 'Hypernetwork',
         };
         const mandatoryQuickSettings = Object.keys(quickSettingLabelRenames).filter(k => entry.data.quickSettings.hasOwnProperty(k));
         const miscQuickSettings = Object.keys(entry.data.quickSettings).filter(k => mandatoryQuickSettings.indexOf(k) == -1);
         function createQuickSetting(label, settingPath) {
             const quickSettingParameter = sm.createInspectorParameter(label, entry.data.quickSettings[settingPath], () => sm.applyQuickParameters(entry.data.quickSettings, settingPath));
             if (sm.componentMap.hasOwnProperty(settingPath)) {
-                quickSettingParameter.dataset['valueDiff'] = (sm.componentMap[settingPath].entries[0].component.instance.$$.ctx[0] == entry.data.quickSettings[settingPath] ? 'same' : 'changed');
+                quickSettingParameter.dataset['valueDiff'] = (sm.getComponentValue(sm.componentMap[settingPath].entries[0]) == entry.data.quickSettings[settingPath] ? 'same' : 'changed');
             }
             else {
                 quickSettingParameter.dataset['valueDiff'] = 'missing';
@@ -651,7 +650,7 @@
                 const settingPath = sectionName.endsWith('.py') ? getScriptSettingName(sectionName.substring(0, sectionName.length - 3), settingName) : `${sectionName}/${settingName}`;
                 if (curatedSettingNames.has(settingPath) ||
                     (sm.componentMap.hasOwnProperty(settingPath) && sm.memoryStorage.currentDefault.contents.hasOwnProperty(settingPath) &&
-                        sm.componentMap[settingPath].entries.every(e => sm.utils.areLooselyEqualValue(value, e.component.props.value, sm.memoryStorage.currentDefault.contents[settingPath])))) {
+                        sm.componentMap[settingPath].entries.every(e => sm.utils.areLooselyEqualValue(value, sm.getComponentValue(e), sm.memoryStorage.currentDefault.contents[settingPath])))) {
                     delete mergedComponentSettings[sectionName][settingName];
                 }
             }
@@ -674,7 +673,7 @@
                     const mappedComponents = sm.componentMap[settingPathInfo.basePath].entries;
                     for (let i = 0; i < mappedComponents.length; i++) {
                         const finalSettingName = mappedComponents.length == 1 ? settingName : `${settingName} ${i}`;
-                        if (!sm.utils.areLooselyEqualValue(value, mappedComponents[i].component.props.value, sm.memoryStorage.currentDefault.contents[settingPathInfo.basePath])) {
+                        if (!sm.utils.areLooselyEqualValue(value, sm.getComponentValue(mappedComponents[i]), sm.memoryStorage.currentDefault.contents[settingPathInfo.basePath])) {
                             mergedComponentSettings[sectionName][finalSettingName] = value;
                         }
                     }
@@ -701,7 +700,7 @@
         for (const setting of settings) {
             const settingPathInfo = sm.utils.getSettingPathInfo(setting.path);
             if (sm.componentMap.hasOwnProperty(settingPathInfo.basePath)) {
-                if (sm.componentMap[settingPathInfo.basePath].entries[settingPathInfo.index].component.props.value != setting.value) {
+                if (sm.getComponentValue(sm.componentMap[settingPathInfo.basePath].entries[settingPathInfo.index]) != setting.value) {
                     element.dataset['valueDiff'] = 'changed';
                     break;
                 }
@@ -734,8 +733,9 @@
                 console.warn(`[State Manager] Could not apply component path ${settingPathInfo.basePath}`);
                 continue;
             }
-            componentData.entries[settingPathInfo.index].component.props.value = settings[componentPath];
-            componentData.entries[settingPathInfo.index].component.instance.$set({ value: componentData.entries[settingPathInfo.index].component.props.value });
+            // Use the Gradio 4.x compatible helper function
+            sm.setComponentValue(componentData.entries[settingPathInfo.index], settings[componentPath]);
+            // Also dispatch change event for any listeners
             const e = new Event("change", { bubbles: true });
             Object.defineProperty(e, "target", { value: componentData.entries[settingPathInfo.index].element });
             componentData.entries[settingPathInfo.index].element.dispatchEvent(e);
@@ -948,8 +948,17 @@
             const inputAccordions = document.querySelectorAll('#tab_txt2img .input-accordion, #tab_img2img .input-accordion');
             for (const accordion of inputAccordions) {
                 const component = gradio_config.components.find(c => c.props.elem_id == accordion.id);
-                const checkbox = accordion.parentElement.querySelector(`#${accordion.id}-checkbox`);
-                const visibleCheckbox = accordion.parentElement.querySelector(`#${accordion.id}-visible-checkbox`);
+                // Handle both A1111 and Forge Classic Neo checkbox structures
+                // A1111: #id-checkbox is an input directly
+                // Forge Classic Neo: #id-checkbox contains an input element inside
+                let checkboxContainer = accordion.parentElement.querySelector(`#${accordion.id}-checkbox`);
+                let checkbox = checkboxContainer instanceof HTMLInputElement
+                    ? checkboxContainer
+                    : checkboxContainer?.querySelector('input');
+                let visibleCheckboxContainer = accordion.parentElement.querySelector(`#${accordion.id}-visible-checkbox`);
+                let visibleCheckbox = visibleCheckboxContainer instanceof HTMLInputElement
+                    ? visibleCheckboxContainer
+                    : visibleCheckboxContainer?.querySelector('input');
                 if (!checkbox || !visibleCheckbox) {
                     console.warn(`[State Manager] An input accordion with an unexpected layout or naming was found (id: ${accordion.id})`);
                     continue;
@@ -1258,7 +1267,7 @@
                 const value = savedComponentDefaults[settingPath];
                 const mappedComponents = sm.componentMap[settingPath].entries;
                 for (let i = 0; i < mappedComponents.length; i++) {
-                    if (!sm.utils.areLooselyEqualValue(value, mappedComponents[i].component.props.value)) {
+                    if (!sm.utils.areLooselyEqualValue(value, sm.getComponentValue(mappedComponents[i]))) {
                         mergedComponentSettings[mappedComponents.length == 1 ? settingPath : `${settingPath}/${i}`] = value;
                     }
                 }
@@ -1289,7 +1298,7 @@
             if (reType.test(componentPath)) {
                 for (let i = 0; i < componentData.entries.length; i++) {
                     const finalComponentPath = componentData.entries.length == 1 ? componentPath : `${componentPath}/${i}`;
-                    const currentValue = componentData.entries[i].component.props.value;
+                    const currentValue = sm.getComponentValue(componentData.entries[i]);
                     if (!changedOnly || (sm.memoryStorage.currentDefault.contents[finalComponentPath] != currentValue)) {
                         settings[finalComponentPath] = currentValue;
                     }
@@ -1390,6 +1399,102 @@
         }
     };
     // Shamelessly yoinked from https://www.syncfusion.com/blogs/post/deep-compare-javascript-objects.aspx
+    // Helper functions for Gradio 4.x compatibility
+    // In Gradio 4.x, Svelte internals ($$.ctx, $set) are not exposed, so we need DOM-based access
+    sm.getComponentValue = function (mappedComponent) {
+        const element = mappedComponent.element;
+        const component = mappedComponent.component;
+        // Try reading from DOM element first (Gradio 4.x compatible)
+        if (element) {
+            // Handle different input types
+            if (element instanceof HTMLInputElement) {
+                if (element.type === 'checkbox') {
+                    return element.checked;
+                }
+                else if (element.type === 'number' || element.type === 'range') {
+                    return parseFloat(element.value);
+                }
+                return element.value;
+            }
+            else if (element instanceof HTMLTextAreaElement) {
+                return element.value;
+            }
+            else if (element instanceof HTMLSelectElement) {
+                return element.value;
+            }
+            // For Gradio components, try to find the actual input inside
+            const input = element.querySelector('input, textarea, select');
+            if (input) {
+                if (input instanceof HTMLInputElement) {
+                    if (input.type === 'checkbox') {
+                        return input.checked;
+                    }
+                    else if (input.type === 'number' || input.type === 'range') {
+                        return parseFloat(input.value);
+                    }
+                    return input.value;
+                }
+                else if (input instanceof HTMLTextAreaElement) {
+                    return input.value;
+                }
+                else if (input instanceof HTMLSelectElement) {
+                    return input.value;
+                }
+            }
+            // For dropdown components, look for the selected value differently
+            const dropdownValue = element.querySelector('input[type="hidden"]');
+            if (dropdownValue) {
+                return dropdownValue.value;
+            }
+        }
+        // Fallback: Try Svelte 3/4 internals (for backwards compatibility)
+        if (component?.instance?.$?.ctx) {
+            return component.instance.$$.ctx[0];
+        }
+        // Fallback: Try props.value
+        if (component?.props?.value !== undefined) {
+            return component.props.value;
+        }
+        console.warn('[State Manager] Could not read value from component', element, component);
+        return undefined;
+    };
+    sm.setComponentValue = function (mappedComponent, value) {
+        const element = mappedComponent.element;
+        const component = mappedComponent.component;
+        // Try setting on DOM element first (Gradio 4.x compatible)
+        if (element) {
+            let targetInput = null;
+            if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
+                targetInput = element;
+            }
+            else {
+                // For Gradio components, find the actual input inside
+                targetInput = element.querySelector('input, textarea, select');
+            }
+            if (targetInput) {
+                if (targetInput instanceof HTMLInputElement && targetInput.type === 'checkbox') {
+                    targetInput.checked = Boolean(value);
+                }
+                else {
+                    targetInput.value = String(value ?? '');
+                }
+                // Dispatch input event to notify Gradio of the change (like updateInput in WebUI)
+                const inputEvent = new Event('input', { bubbles: true });
+                Object.defineProperty(inputEvent, 'target', { value: targetInput });
+                targetInput.dispatchEvent(inputEvent);
+                return;
+            }
+        }
+        // Fallback: Try Svelte $set (for backwards compatibility)
+        if (component?.instance?.$set) {
+            if (component.props) {
+                component.props.value = value;
+            }
+            component.instance.$set({ value: value });
+            return;
+        }
+        console.warn('[State Manager] Could not set value on component', element, component, value);
+    };
     sm.utils = {
         // UI
         getCurrentGenerationTypeFromUI: () => {

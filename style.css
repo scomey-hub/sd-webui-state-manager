@@ -8,15 +8,6 @@
     --sm-value-diff-missing: rgb(251, 146, 60);
 }
 
-.contain {
-    display: flex;
-    flex-direction: row;
-}
-
-#quicksettings {
-    width: calc(100vw - 20px);
-}
-
 /* SM components */
 .sd-webui-sm-quicksettings-button {
     position: relative;
@@ -97,13 +88,19 @@
     display: grid;
     grid-template-rows: 2em 60vh auto;
     grid-template-columns: 1fr;
-    padding-top: 81px; /* TODO: set from JS to line up nicely */
+    padding-top: 10px;
     margin-left: 3px;
     justify-content: right; /* Nicer slide-in animation */
     overflow: hidden;
     transition: width var(--sm-side-panel-slide-speed), visibility var(--sm-side-panel-slide-speed);
     visibility: hidden;
 
+    /* Use fixed positioning for universal compatibility */
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    z-index: 100;
 }
 
 .sd-webui-sm-panel-container {
@@ -152,17 +149,6 @@
     visibility: visible;
     /* width: var(--sm-side-panel-width); */
     background: var(--body-background-fill);
-}
-
-/* Forge Classic Neo compatibility - use fixed positioning when .contain doesn't exist */
-.sd-webui-sm-forge-compat.open .sd-webui-sm-side-panel {
-    position: fixed;
-    top: 0;
-    right: 0;
-    height: 100vh;
-    padding-top: 10px;
-    margin-left: 0;
-    z-index: 100;
     box-shadow: -5px 0 15px rgba(0,0,0,0.3);
 }
 

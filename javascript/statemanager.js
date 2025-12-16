@@ -177,7 +177,9 @@
             infoDiv.appendChild(buttonContainer);
             panel.appendChild(infoDiv);
             sm.panelContainer.appendChild(panel);
-            app.querySelector('.contain').appendChild(sm.panelContainer);
+            // Find the best container for the side panel
+            const legacyContainer = app.querySelector('.contain') || app.querySelector('.app') || app.querySelector('gradio-app > div') || app.body || app;
+            legacyContainer.appendChild(sm.panelContainer);
             sm.panelContainer.classList.add('sd-webui-sm-modal-panel');
             sm.panelContainer.classList.add('open');
             return;
@@ -316,7 +318,14 @@
         panel.appendChild(entryContainer);
         panel.appendChild(sm.inspector);
         sm.panelContainer.appendChild(panel);
-        app.querySelector('.contain').appendChild(sm.panelContainer);
+        // Find the best container for the side panel
+        // A1111 uses .contain, Forge Classic Neo uses different structure
+        const container = app.querySelector('.contain') || app.querySelector('.app') || app.querySelector('gradio-app > div') || app.body || app;
+        container.appendChild(sm.panelContainer);
+        // Add a class to help with CSS targeting based on container type
+        if (!app.querySelector('.contain')) {
+            sm.panelContainer.classList.add('sd-webui-sm-forge-compat');
+        }
         // Event listeners
         // app.querySelector('#txt2img_generate').addEventListener('click', () => sm.lastUsedState = sm.getCurrentState('txt2img'));
         // app.querySelector('#img2img_generate').addEventListener('click', () => sm.lastUsedState = sm.getCurrentState('img2img'));

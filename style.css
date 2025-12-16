@@ -154,6 +154,18 @@
     background: var(--body-background-fill);
 }
 
+/* Forge Classic Neo compatibility - use fixed positioning when .contain doesn't exist */
+.sd-webui-sm-forge-compat.open .sd-webui-sm-side-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    padding-top: 10px;
+    margin-left: 0;
+    z-index: 100;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+}
+
 .sd-webui-sm-panel-container.sd-webui-sm-modal-panel.open .sd-webui-sm-side-panel {
     --sm-side-panel-width: calc(100vw - calc(var(--position-offset) * 2));
 }
